@@ -52,11 +52,46 @@ app.get('/payment-methods', (req, res) => {
   ]);
 });
 
-app.get('/oauth/redirect', (req, res) => {
-  res.send('✅ Your payment app was successfully connected. You can close this tab now.');
-});
+const axios = require('axios');
 
-const axios = require('axios'); // Add this at the top of your file
+app.get('/oauth/redirect', async (req, res) => {
+  const { code } = req.query;
+
+  try {
+    // Exchange code for access token from GHL
+    const tokenResponse = await axios.post('https://api.msgsndr.com/oauth/token', {
+      client_id: '687f2fbbd3996c631c1b4fea-mdemium6',
+      client_secret: '0aff7dcc-0590-40e6-84c5-e624f996e30f',
+      grant_type: 'authorization_code',
+      code: code,
+      redirect_uri: 'https://gateway.optiroai.com/oauth/redirect'
+    });
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // Optional: log it
+    console.log('✅ Access token received:', accessToken);
+
+    // Now call GHL to register payment provider
+    await axios.post('https://api.msgsndr.com/integrations/payment/custom-provider/config', {
+      name: 'BML Payment Gateway',
+      description: 'Pay securely via Bank of Maldives',
+      imageUrl: 'https://gateway.optiroai.com/logo.png',
+      locationId: 'Z7DBdt6O2qMGJDafaqpA', // 👈 Hardcoded for now
+      queryUrl: 'https://gateway.optiroai.com/query',
+      paymentsUrl: 'https://gateway.optiroai.com/payments'
+    }, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    res.send('✅ Payment provider registered successfully. You can close this tab.');
+  } catch (err) {
+    console.error('❌ Error in /oauth/redirect:', err.response?.data || err.message);
+    res.status(500).send('Failed to register payment provider');
+  }
+});
 
 app.post('/oauth/token', async (req, res) => {
   const accessToken = 'dummy-access-token'; // Simulated token
