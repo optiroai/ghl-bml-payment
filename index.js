@@ -6,16 +6,6 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 
 // Basic Payment Gateway Simulation
-app.get('/payment-methods', (req, res) => {
-  res.json([
-    {
-      id: 'bml',
-      name: 'BML Gateway',
-      description: 'Pay via Bank of Maldives',
-      type: 'redirect',
-    },
-  ]);
-});
 
 app.post('/payments', (req, res) => {
   const { successUrl } = req.body;
