@@ -8,6 +8,8 @@ const qs = require('querystring');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(bodyParser.json());
+
 // Health Check
 app.get('/', (req, res) => {
   res.send('✅ GHL BML Payment App is live!');
@@ -85,6 +87,24 @@ app.get('/oauth/redirect', async (req, res) => {
 
     console.log('✅ Access token received:', accessToken);
     console.log('📍 Location ID:', locationId);
+
+    // ✅ Register custom payment provider in GHL
+    await axios.post(
+      'https://backend.leadconnectorhq.com/integrations/payment/custom-provider/config',
+      {
+        name: 'BML Payment Gateway',
+        description: 'Pay securely via Bank of Maldives',
+        imageUrl: 'https://gateway.optiroai.com/logo.png', // optional logo
+        locationId: locationId,
+        queryUrl: 'https://gateway.optiroai.com/query',
+        paymentsUrl: 'https://gateway.optiroai.com/payments'
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
 
     res.send('✅ BML Payment Gateway registered successfully! You can close this tab.');
   } catch (err) {
