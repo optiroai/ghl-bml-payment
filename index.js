@@ -52,6 +52,7 @@ app.post('/oauth/token', (req, res) => {
 });
 
 app.get('/payment-methods', (req, res) => {
+  console.log('📥 GHL called /payment-methods:', req.headers.authorization);
   res.json([
     {
       id: 'bml',
@@ -60,6 +61,10 @@ app.get('/payment-methods', (req, res) => {
       type: 'redirect'
     }
   ]);
+});
+
+app.get('/oauth/redirect', (req, res) => {
+  res.send('✅ Your payment app was successfully connected. You can close this tab now.');
 });
 
 app.listen(PORT, () => {
