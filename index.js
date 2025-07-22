@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
@@ -9,12 +10,12 @@ const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
-// Health check
+// ✅ Health check
 app.get('/', (req, res) => {
   res.send('✅ GHL BML Payment App is live!');
 });
 
-// Simulated Payments endpoint
+// ✅ Simulated payments iframe handler
 app.post('/payments', (req, res) => {
   const { successUrl } = req.body;
   res.json({
@@ -22,13 +23,13 @@ app.post('/payments', (req, res) => {
   });
 });
 
-// Webhook endpoint
+// ✅ Webhook endpoint
 app.post('/webhook', (req, res) => {
-  console.log('Webhook received:', req.body);
+  console.log('📩 Webhook received:', req.body);
   res.sendStatus(200);
 });
 
-// Payment methods (required for GHL)
+// ✅ Payment methods endpoint (used by GHL to identify the provider)
 app.get('/payment-methods', (req, res) => {
   console.log('📥 GHL called /payment-methods:', req.headers.authorization);
   res.json([
@@ -41,7 +42,7 @@ app.get('/payment-methods', (req, res) => {
   ]);
 });
 
-// OAuth Authorization endpoint
+// ✅ OAuth authorization step
 app.get('/oauth/authorize', (req, res) => {
   const redirectUri = req.query.redirect_uri;
   const state = req.query.state;
@@ -55,20 +56,19 @@ app.get('/oauth/authorize', (req, res) => {
   res.redirect(redirectUrl);
 });
 
-// OAuth Redirect handler
+// ✅ OAuth redirect and payment provider registration
 app.get('/oauth/redirect', async (req, res) => {
   const { code } = req.query;
 
   try {
-    // Exchange code for access token
     const tokenResponse = await axios.post(
       'https://api.msgsndr.com/oauth/token',
       qs.stringify({
-        client_id: '687f2fbbd3996c631c1b4fea-mdemium6',
-        client_secret: '0aff7dcc-0590-40e6-84c5-e624f996e30f',
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET,
         grant_type: 'authorization_code',
         code: code,
-        redirect_uri: 'https://gateway.optiroai.com/oauth/redirect'
+        redirect_uri: process.env.REDIRECT_URI
       }),
       {
         headers: {
@@ -86,14 +86,14 @@ app.get('/oauth/redirect', async (req, res) => {
     console.log('✅ Access token received:', accessToken);
     console.log('📍 Location ID:', locationId);
 
-    // Register Payment Provider with GHL
+    // 🔁 Register payment provider
     await axios.post(
       'https://backend.leadconnectorhq.com/integrations/payment/custom-provider/config',
       {
         name: 'BML Payment Gateway',
         description: 'Pay securely via Bank of Maldives',
         imageUrl: 'https://gateway.optiroai.com/logo.png',
-        locationId: locationId,
+        locationId,
         queryUrl: 'https://gateway.optiroai.com/query',
         paymentsUrl: 'https://gateway.optiroai.com/payments'
       },
@@ -108,6 +108,44 @@ app.get('/oauth/redirect', async (req, res) => {
   } catch (err) {
     console.error('❌ Error in /oauth/redirect:', err.response?.data || err.message);
     res.status(500).send('Failed to register payment provider');
+  }
+});
+
+// ✅ Query endpoint (GHL verifies payment status here)
+app.post('/query', (req, res) => {
+  const { type } = req.body;
+
+  console.log('📩 /query received:', req.body);
+
+  switch (type) {
+    case 'verify':
+      return res.json({ success: true }); // simulate success
+    case 'list_payment_methods':
+      return res.json([
+        {
+          id: 'demo-card-001',
+          type: 'card',
+          title: 'Visa',
+          subTitle: '**** **** **** 4242',
+          expiry: '12/29',
+          customerId: 'demo-customer-id',
+          imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png'
+        }
+      ]);
+    case 'charge_payment':
+      return res.json({
+        success: true,
+        chargeId: 'demo_charge_id',
+        chargeSnapshot: {
+          id: 'demo_charge_id',
+          status: 'succeeded',
+          amount: req.body.amount,
+          chargeId: 'demo_charge_id',
+          chargedAt: Math.floor(Date.now() / 1000)
+        }
+      });
+    default:
+      return res.json({ message: `Unhandled type: ${type}` });
   }
 });
 
