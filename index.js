@@ -86,24 +86,6 @@ app.get('/oauth/redirect', async (req, res) => {
     console.log('✅ Access token received:', accessToken);
     console.log('📍 Location ID:', locationId);
 
-    // Register the Payment Provider in GHL
-    await axios.post(
-      'https://api.msgsndr.com/integrations/payment/custom-provider/config',
-      {
-        name: 'BML Payment Gateway',
-        description: 'Pay securely via Bank of Maldives',
-        imageUrl: 'https://gateway.optiroai.com/logo.png',
-        locationId: locationId,
-        queryUrl: 'https://gateway.optiroai.com/query',
-        paymentsUrl: 'https://gateway.optiroai.com/payments'
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      }
-    );
-
     res.send('✅ BML Payment Gateway registered successfully! You can close this tab.');
   } catch (err) {
     console.error('❌ Error in /oauth/redirect:', err.response?.data || err.message);
