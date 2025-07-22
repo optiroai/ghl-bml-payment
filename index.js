@@ -79,7 +79,7 @@ app.get('/oauth/redirect', async (req, res) => {
 
     // Register payment provider config
     await axios.post(
-      'https://api.msgsndr.com/integrations/payment/custom-provider/config',
+      'https://rest.gohighlevel.com/integrations/payment/custom-provider/config',
       {
         name: 'BML Payment Gateway',
         description: 'Pay securely via Bank of Maldives',
