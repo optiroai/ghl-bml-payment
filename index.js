@@ -88,7 +88,7 @@ app.get('/oauth/redirect', async (req, res) => {
 
     // Register Payment Provider with GHL
     await axios.post(
-      'https://services.msgsndr.com/integrations/payment/custom-provider/config',
+      'https://services.leadconnectorhq.com/integrations/payment/custom-provider/config',
       {
         name: 'BML Payment Gateway',
         description: 'Pay securely via Bank of Maldives',
