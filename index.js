@@ -65,7 +65,7 @@ app.get('/oauth/redirect', async (req, res) => {
       'https://api.msgsndr.com/oauth/token',
       qs.stringify({
         client_id: '687f2fbbd3996c631c1b4fea-mdemium6',
-        client_secret: 'YOUR_0aff7dcc-0590-40e6-84c5-e624f996e30f',
+        client_secret: '0aff7dcc-0590-40e6-84c5-e624f996e30f',
         grant_type: 'authorization_code',
         code: code,
         redirect_uri: 'https://gateway.optiroai.com/oauth/redirect'
