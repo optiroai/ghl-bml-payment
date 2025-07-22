@@ -30,6 +30,10 @@ app.post('/webhook', (req, res) => {
   res.sendStatus(200);
 });
 
+app.get('/', (req, res) => {
+  res.send('✅ GHL BML Payment App is live!');
+});
+
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
