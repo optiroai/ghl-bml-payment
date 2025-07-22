@@ -4,6 +4,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
+app.get('/payment-methods', (req, res) => {
+  res.json([
+    {
+      id: 'bml',
+      name: 'BML Payment Gateway',
+      description: 'Pay securely via Bank of Maldives',
+      type: 'redirect'
+    }
+  ]);
+});
 
 // Basic Payment Gateway Simulation
 app.get('/payment-methods', (req, res) => {
