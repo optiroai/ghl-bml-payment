@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
+const jwt = require('jsonwebtoken');
 const qs = require('querystring');
 
 const app = express();
@@ -8,12 +9,26 @@ const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
-// ✅ Health check
+// Health check
 app.get('/', (req, res) => {
   res.send('✅ GHL BML Payment App is live!');
 });
 
-// ✅ /payment-methods endpoint (GHL polls this)
+// Simulated Payments endpoint
+app.post('/payments', (req, res) => {
+  const { successUrl } = req.body;
+  res.json({
+    redirectUrl: successUrl || 'https://your-redirect-after-payment.com'
+  });
+});
+
+// Webhook endpoint
+app.post('/webhook', (req, res) => {
+  console.log('Webhook received:', req.body);
+  res.sendStatus(200);
+});
+
+// Payment methods (required for GHL)
 app.get('/payment-methods', (req, res) => {
   console.log('📥 GHL called /payment-methods:', req.headers.authorization);
   res.json([
@@ -26,43 +41,31 @@ app.get('/payment-methods', (req, res) => {
   ]);
 });
 
-// ✅ Simulated /payments endpoint
-app.post('/payments', (req, res) => {
-  const { successUrl } = req.body;
-  res.json({
-    redirectUrl: successUrl || 'https://your-redirect-after-payment.com'
-  });
-});
-
-// ✅ Webhook simulation
-app.post('/webhook', (req, res) => {
-  console.log('📬 Webhook received:', req.body);
-  res.sendStatus(200);
-});
-
-// ✅ OAuth: Step 1 - Authorize
+// OAuth Authorization endpoint
 app.get('/oauth/authorize', (req, res) => {
-  const { redirect_uri, client_id, state } = req.query;
-  const authCode = 'dummy-auth-code'; // Simulated code
+  const redirectUri = req.query.redirect_uri;
+  const state = req.query.state;
+  const authCode = 'dummy-auth-code';
 
-  if (!redirect_uri || redirect_uri.includes('highlevel')) {
-    return res.status(400).send('❌ Invalid redirect URI');
+  if (!redirectUri || redirectUri.includes('highlevel')) {
+    return res.status(400).send('Invalid redirect URI');
   }
 
-  const redirectUrl = `${redirect_uri}?code=${authCode}&state=${state}`;
+  const redirectUrl = `${redirectUri}?code=${authCode}&state=${state}`;
   res.redirect(redirectUrl);
 });
 
-// ✅ OAuth: Step 2 - Redirect handler (exchanges code → access_token and registers payment config)
+// OAuth Redirect handler
 app.get('/oauth/redirect', async (req, res) => {
   const { code } = req.query;
 
   try {
+    // Exchange code for access token
     const tokenResponse = await axios.post(
       'https://api.msgsndr.com/oauth/token',
       qs.stringify({
-        client_id: '687f2fbbd3996c631c1b4fea-mdemium6', // 🔁 Replace this
-        client_secret: '0aff7dcc-0590-40e6-84c5-e624f996e30f', // 🔁 Replace this
+        client_id: '687f2fbbd3996c631c1b4fea-mdemium6',
+        client_secret: 'YOUR_0aff7dcc-0590-40e6-84c5-e624f996e30f',
         grant_type: 'authorization_code',
         code: code,
         redirect_uri: 'https://gateway.optiroai.com/oauth/redirect'
@@ -75,17 +78,23 @@ app.get('/oauth/redirect', async (req, res) => {
     );
 
     const accessToken = tokenResponse.data.access_token;
-    console.log('✅ Access token received:', accessToken);
+    const decoded = jwt.decode(accessToken);
+    const locationId = decoded?.authClassId;
 
-    // Register payment provider config
+    if (!locationId) throw new Error('Missing locationId from token');
+
+    console.log('✅ Access token received:', accessToken);
+    console.log('📍 Location ID:', locationId);
+
+    // Register Payment Provider with GHL
     await axios.post(
-      'https://rest.gohighlevel.com/integrations/payment/custom-provider/config',
+      'https://services.msgsndr.com/integrations/payment/custom-provider/config',
       {
         name: 'BML Payment Gateway',
         description: 'Pay securely via Bank of Maldives',
         imageUrl: 'https://gateway.optiroai.com/logo.png',
-        locationId: 'Z7DBdt6O2qMGJDafaqpA', // ✅ Replace with dynamic ID later
-        queryUrl: 'https://gateway.optiroai.com/query', // Placeholder or implement later
+        locationId: locationId,
+        queryUrl: 'https://gateway.optiroai.com/query',
         paymentsUrl: 'https://gateway.optiroai.com/payments'
       },
       {
@@ -98,7 +107,7 @@ app.get('/oauth/redirect', async (req, res) => {
     res.send('✅ Payment provider registered successfully. You can close this tab.');
   } catch (err) {
     console.error('❌ Error in /oauth/redirect:', err.response?.data || err.message);
-    res.status(500).send('❌ Failed to register payment provider');
+    res.status(500).send('Failed to register payment provider');
   }
 });
 
